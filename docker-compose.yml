@@ -1,0 +1,100 @@
+networks:
+    nuxt-laravel:
+        driver: bridge
+
+services:
+
+  nginx:
+    container_name: nginx
+    build:
+      context: .docker/nginx
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    volumes:
+      - ./:/var/www/html
+      - ./.docker/nginx/udemy.nuxt-laravel.conf:/etc/nginx/conf.d/udemy.nuxt-laravel.conf
+    depends_on:
+      - php
+    networks:
+      - nuxt-laravel
+  php:
+    container_name: php
+    build:
+      context: .docker/php
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/var/www/html
+      - ./.docker/nginx/udemy.nuxt-laravel.conf:/etc/nginx/conf.d/udemy.nuxt-laravel.conf
+      - ./.docker/php/php.ini:/usr/local/etc/php/conf.d/php.ini
+    ports:
+      - 9000:9000
+    networks:
+      - nuxt-laravel
+
+  mysql:
+    container_name: mysql
+    image: "mysql:8.0"
+    platform: 'linux/x86_64'
+    ports:
+      - "${FORWARD_DB_PORT:-3306}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "${DB_PASSWORD}"
+      MYSQL_DATABASE: "${DB_DATABASE}"
+      MYSQL_USER: "${DB_USERNAME}"
+      MYSQL_PASSWORD: "${DB_PASSWORD}"
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+    volumes:
+      - ".docker/mysql:/var/lib/mysql"
+    networks:
+      - nuxt-laravel
+
+  redis:
+    container_name: redis
+    image: 'redis:latest'
+    tty: true
+    ports:
+      - '6379:6379'
+    networks:
+      - nuxt-laravel
+
+  artisan:
+    container_name: artisan
+    build:
+      context: .docker/php
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/var/www/html
+    working_dir: /var/www/html
+    entrypoint: [ "php","/var/www/html/artisan" ]
+    networks:
+      - nuxt-laravel
+
+  npm:
+    container_name: npm
+    image: node:latest
+    volumes:
+      - ./:/var/www/html
+    working_dir: /var/www/html
+    entrypoint: [ 'npm' ]
+    networks:
+      - nuxt-laravel
+
+  yarn:
+    container_name: yarn
+    image: node:latest
+    volumes:
+        - ./:/var/www/html
+    working_dir: /var/www/html
+    entrypoint: [ 'yarn' ]
+    networks:
+      - nuxt-laravel
+
+  mailhog:
+    image: "mailhog/mailhog:latest"
+    ports:
+      - 1025:1025
+      - 8025:8025
+    networks:
+      - nuxt-laravel
+
